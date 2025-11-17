@@ -15,6 +15,19 @@ When PyCharm is installed or updated via Chocolatey, old versions sometimes rema
 - Comprehensive logging
 - WhatIf mode for safe testing
 - Works with both HKLM and HKCU registry locations
+- Silent mode for automated deployments
+- Device inventory marker for dynamic group targeting
+
+## Files Included
+
+| File | Description |
+|------|-------------|
+| `Uninstall-OldPyCharm.ps1` | Main script that removes old PyCharm versions |
+| `Detect-OldPyCharm.ps1` | Detection script for Intune Remediations |
+| `Set-PyCharmMarker.ps1` | Inventory script that sets registry marker for device grouping |
+| `README.md` | This file - comprehensive documentation |
+| `EXAMPLES.md` | Detailed examples for various deployment scenarios |
+| `LICENSE` | MIT License |
 
 ## Requirements
 
@@ -112,6 +125,106 @@ To deploy this script via Microsoft Intune:
    - Enforce script signature check: **No** (unless you sign it)
    - Run script in 64-bit PowerShell: **Yes**
 4. Assign to target groups
+
+### Creating a Dynamic Group for Devices with PyCharm
+
+To automatically target only devices that have PyCharm installed, you can create a dynamic device group in Intune.
+
+#### Option 1: Using Custom Device Properties (Recommended)
+
+Since Intune doesn't natively expose installed applications in dynamic group rules, use a detection script to set a custom registry value, then create a compliance policy to read it.
+
+1. **Create a Detection Script** (`Set-PyCharmMarker.ps1`):
+```powershell
+# Check if PyCharm is installed
+$pyCharmInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" |
+    Where-Object { $_.DisplayName -like "PyCharm*" }
+
+if ($pyCharmInstalled) {
+    # Set a marker in registry for dynamic group detection
+    $registryPath = "HKLM:\SOFTWARE\YourCompany\Inventory"
+    if (-not (Test-Path $registryPath)) {
+        New-Item -Path $registryPath -Force | Out-Null
+    }
+    Set-ItemProperty -Path $registryPath -Name "PyCharmInstalled" -Value "True" -Type String
+    Write-Host "PyCharm detected and marker set"
+    exit 0
+} else {
+    Write-Host "PyCharm not installed"
+    exit 0
+}
+```
+
+2. **Deploy Detection Script via Intune**:
+   - Go to **Devices** > **Scripts** > **Add** > **Windows 10 and later**
+   - Upload the detection script
+   - Assign to **All Devices**
+   - Schedule to run daily or weekly
+
+3. **Create Custom Compliance Policy**:
+   - Go to **Devices** > **Compliance policies** > **Create policy**
+   - Platform: **Windows 10 and later**
+   - Add a custom compliance setting using a detection script:
+```powershell
+$marker = Get-ItemProperty -Path "HKLM:\SOFTWARE\YourCompany\Inventory" -Name "PyCharmInstalled" -ErrorAction SilentlyContinue
+if ($marker.PyCharmInstalled -eq "True") {
+    return "Compliant"
+}
+```
+   - This creates a device property you can reference
+
+4. **Alternative: Use Dynamic Group with Device Name Pattern**:
+
+   If your organization uses naming conventions, create a dynamic group:
+   - Go to **Azure Active Directory** > **Groups** > **New group**
+   - Group type: **Security**
+   - Membership type: **Dynamic Device**
+   - Click **Add dynamic query**
+   - Use rule syntax like:
+   ```
+   (device.displayName -contains "DEV") or (device.displayName -contains "WORKSTATION")
+   ```
+
+#### Option 2: Using Intune Detected Apps Report
+
+1. **Query Intune for Devices with PyCharm**:
+   - Go to **Apps** > **Monitor** > **Discovered apps**
+   - Search for "PyCharm"
+   - Export the list of devices
+   - Create a static group with these devices
+
+2. **Create the Device Group**:
+   - Go to **Groups** > **New group**
+   - Group type: **Security**
+   - Membership type: **Assigned** (static)
+   - Add devices from the discovered apps list
+
+#### Option 3: Use Hardware Inventory Extensions (Advanced)
+
+For organizations using Configuration Manager co-management or Intune endpoint analytics:
+
+1. **Enable Endpoint Analytics**
+2. **Query device inventory** for PyCharm installations
+3. **Export and create static group** or use reporting workbooks
+
+#### Recommended Approach
+
+For most organizations, the **simplest approach** is:
+
+1. Deploy the detection script to **All Devices** that sets a registry marker
+2. Create a **static group** initially based on Discovered Apps report
+3. Use the **Remediation** feature with assignments to this group
+4. Let the Remediation detection script handle future device identification automatically
+
+The Intune Remediation feature (Option 1 above) automatically handles device targeting because:
+- Detection script runs on all assigned devices
+- Only devices where detection fails get remediation
+- No need for complex dynamic groups
+
+**Quick Setup:**
+1. Create a group called "Devices - PyCharm Users" (static or dynamic based on department/OU)
+2. Assign the Remediation package to this group
+3. The detection script (`Detect-OldPyCharm.ps1`) will identify which devices actually need cleanup
 
 ### Scheduled Task (GPO or Intune)
 
