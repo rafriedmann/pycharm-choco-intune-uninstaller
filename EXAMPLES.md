@@ -75,20 +75,25 @@ Device has multiple PyCharm versions
    - Click the **Device install status** tab
    - You'll see all devices with PyCharm installed
 
-2. **Export Device List** (optional):
+2. **Export Device List** (for reference):
    - Click **Export** to download CSV
    - Contains device names and user information
+   - **Note:** This CSV cannot be directly imported into a group
 
-3. **Create Static Device Group**:
+3. **Create Static Device Group (Manual Method)**:
    - Go to **Groups** > **New group**
    - Group type: **Security**
    - Group name: `Devices - PyCharm Installed`
    - Membership type: **Assigned** (static)
    - Click **Members** > **Add members**
-   - Search for and add devices from the discovered apps list
+   - **Manually search and add each device** from your CSV reference
    - Click **Create**
 
-4. **Assign Remediation**:
+4. **Alternative: Automate with PowerShell** (Recommended for many devices):
+
+   See the "PowerShell Automation" section below for scripting group membership.
+
+5. **Assign Remediation**:
    - Return to your remediation package
    - Click **Assignments**
    - Assign to: `Devices - PyCharm Installed` group
@@ -99,9 +104,67 @@ Device has multiple PyCharm versions
 - Can track which devices are affected
 - Good for initial cleanup deployment
 
+**Drawbacks:**
+- Manual device addition (unless using PowerShell automation)
+- Requires periodic updates to keep group current
+
 **Maintenance:**
-- Periodically re-export from Discovered Apps to update group
-- Or switch to Option A for automatic coverage
+- Periodically re-export from Discovered Apps to identify new devices
+- Manually add new devices to the group
+- Or switch to Option A (All Devices) for automatic coverage
+
+### PowerShell Automation for Static Groups
+
+If you have many devices, automate group membership using Microsoft Graph PowerShell:
+
+```powershell
+# Install Microsoft Graph module (one-time)
+Install-Module Microsoft.Graph -Scope CurrentUser
+
+# Connect to Microsoft Graph
+Connect-MgGraph -Scopes "Group.ReadWrite.All", "DeviceManagementManagedDevices.Read.All"
+
+# Get the group ID
+$groupName = "Devices - PyCharm Installed"
+$group = Get-MgGroup -Filter "displayName eq '$groupName'"
+
+# Import your CSV from Discovered Apps export
+$devicesWithPyCharm = Import-Csv -Path "C:\Temp\PyCharmDevices.csv"
+
+# Get all Intune managed devices
+$allDevices = Get-MgDeviceManagementManagedDevice -All
+
+# Add devices to group
+foreach ($csvDevice in $devicesWithPyCharm) {
+    $deviceName = $csvDevice.'Device name'  # Adjust column name as needed
+
+    # Find the Azure AD device object
+    $device = $allDevices | Where-Object { $_.DeviceName -eq $deviceName }
+
+    if ($device) {
+        try {
+            New-MgGroupMember -GroupId $group.Id -DirectoryObjectId $device.AzureADDeviceId
+            Write-Host "Added $deviceName to group"
+        } catch {
+            Write-Host "Failed to add $deviceName : $_"
+        }
+    }
+}
+
+Write-Host "Group membership update complete"
+```
+
+**Note:** Adjust the CSV column name based on your actual export format.
+
+**When to Use This Approach:**
+- Initial deployment to specific devices
+- Testing on a subset of devices
+- When you need exact control over which devices are targeted
+
+**When to Use Option A Instead:**
+- Most production deployments
+- Ongoing maintenance (set and forget)
+- Large device populations
 
 #### Option C: Dynamic Group by Department/Naming
 

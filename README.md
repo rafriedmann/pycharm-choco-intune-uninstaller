@@ -152,7 +152,7 @@ You can target only devices with PyCharm installed using Intune's built-in featu
 - `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*`
 - `HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*`
 
-#### Option 1: Use Discovered Apps (Recommended)
+#### Option 1: Use Discovered Apps (For Targeted Deployment)
 
 Intune automatically inventories installed applications from registry keys.
 
@@ -161,16 +161,20 @@ Intune automatically inventories installed applications from registry keys.
 2. Search for "PyCharm"
 3. Click on the PyCharm app entry
 4. View **Device install status** tab to see which devices have it
-5. Export the device list (optional)
+5. Note the device names (Export creates CSV but can't be imported directly)
 6. Create a static group:
    - **Groups** > **New group**
    - Name: `Devices - PyCharm Installed`
    - Type: **Security**, Membership: **Assigned**
-   - Add devices from the discovered apps list
+   - **Members** > **Add members** > Search and add devices one by one
 7. Assign remediation to this group
 
-**Pros:** Uses existing registry keys, no additional scripts
-**Cons:** Static group requires periodic updates
+**Note:** The export is for reference only. You must manually add devices to the group, or use PowerShell/Graph API for automation (see `EXAMPLES.md`).
+
+**Pros:** Targets only devices with PyCharm, uses existing registry keys
+**Cons:** Manual group creation, requires periodic updates
+
+**Recommendation:** For most scenarios, use **Option 2 (All Devices)** instead - it's simpler and self-maintaining.
 
 #### Option 2: Assign to All Devices (Simplest)
 

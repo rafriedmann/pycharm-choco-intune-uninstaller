@@ -49,12 +49,14 @@ Since you don't have Remediations, use the alternative deployment method:
 
 1. Go to **Apps** > **Monitor** > **Discovered apps**
 2. Search for "PyCharm"
-3. Export list of devices with PyCharm
-4. Create static group: **Groups** > **New group**
+3. View devices with PyCharm installed
+4. Export list (for reference - cannot be directly imported)
+5. Create static group: **Groups** > **New group**
    - Name: `Devices - PyCharm Installed`
    - Type: Security
    - Membership: Assigned (static)
-   - Add devices from discovered apps list
+   - Manually add devices by searching for them
+   - Or use PowerShell automation (see EXAMPLES.md)
 
 **Step 2: Deploy as PowerShell Script**
 
