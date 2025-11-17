@@ -23,10 +23,11 @@ When PyCharm is installed or updated via Chocolatey, old versions sometimes rema
 | File | Description |
 |------|-------------|
 | `Uninstall-OldPyCharm.ps1` | Main script that removes old PyCharm versions |
-| `Detect-OldPyCharm.ps1` | Detection script for Intune Remediations |
+| `Detect-OldPyCharm.ps1` | Detection script for Intune Remediations (requires Intune Plan 2) |
 | `Set-PyCharmMarker.ps1` | Inventory script that sets registry marker for device grouping (optional - for advanced scenarios) |
 | `README.md` | This file - comprehensive documentation |
 | `EXAMPLES.md` | Detailed examples for various deployment scenarios |
+| `LICENSING.md` | License tier requirements and deployment options for minimal licenses |
 | `LICENSE` | MIT License |
 
 ## Requirements
@@ -105,18 +106,29 @@ Note: Logging to file still occurs in silent mode.
 
 ## Intune Deployment
 
+**License Requirements:** Different deployment options require different Intune license tiers. See `LICENSING.md` for detailed breakdown by license level.
+
+**Quick License Check:**
+- **Minimal (Intune Plan 1)**: Use PowerShell Scripts with static groups (Option 1)
+- **Standard (Intune Plan 2)**: Use Remediations with All Devices assignment (Option 2) - Recommended
+- **Premium (Plan 2 + Azure AD P1)**: All options available including dynamic groups
+
 To deploy this script via Microsoft Intune:
 
-### As a Remediation Script
+### As a Remediation Script (Requires Intune Plan 2 or Windows E3/E5)
 
 1. In Intune, go to **Devices** > **Remediations**
 2. Create a new script package
-3. **Detection script**: Check if multiple PyCharm versions exist
-4. **Remediation script**: Use `Uninstall-OldPyCharm.ps1`
+3. **Detection script**: Upload `Detect-OldPyCharm.ps1`
+4. **Remediation script**: Upload `Uninstall-OldPyCharm.ps1`
 5. Configure to run in **System context**
 6. Assign to target device groups
 
-### As a PowerShell Script
+**Note:** If you don't have Remediations (Intune Plan 1), see "As a PowerShell Script" below or refer to `LICENSING.md` for alternative approaches.
+
+### As a PowerShell Script (Works with all Intune licenses)
+
+For organizations with **Intune Plan 1** (basic license) without Remediations:
 
 1. In Intune, go to **Devices** > **Scripts** > **Add** > **Windows 10 and later**
 2. Upload `Uninstall-OldPyCharm.ps1`
@@ -124,7 +136,13 @@ To deploy this script via Microsoft Intune:
    - Run this script using the logged on credentials: **No**
    - Enforce script signature check: **No** (unless you sign it)
    - Run script in 64-bit PowerShell: **Yes**
-4. Assign to target groups
+4. Assign to target groups (use static group from Discovered Apps)
+
+**Difference from Remediations:**
+- PowerShell Scripts run once per assignment
+- No automatic detection/remediation scheduling
+- To run periodically, deploy a scheduled task (see `EXAMPLES.md`)
+- Still effective for one-time or scheduled cleanup
 
 ### Targeting Devices with PyCharm (No Additional Scripts Needed)
 
