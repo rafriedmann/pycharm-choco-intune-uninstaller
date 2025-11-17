@@ -138,6 +138,68 @@ function Get-PyCharmInstallations {
     return $installations
 }
 
+# Function to clean up leftover installation folders
+function Remove-LeftoverFolders {
+    param(
+        [PSCustomObject]$Installation
+    )
+
+    $foldersToCheck = @()
+
+    # Add the install location from registry if available
+    if ($Installation.InstallLocation -and (Test-Path $Installation.InstallLocation)) {
+        $foldersToCheck += $Installation.InstallLocation
+    }
+
+    # Common PyCharm installation paths
+    $version = $Installation.Version.ToString()
+    $edition = $Installation.Edition
+
+    $basePaths = @(
+        "C:\Program Files\JetBrains",
+        "C:\Program Files (x86)\JetBrains"
+    )
+
+    foreach ($basePath in $basePaths) {
+        if (Test-Path $basePath) {
+            # Look for folders matching this version
+            $pattern = if ($edition -eq "Community") {
+                "PyCharm Community Edition $version*"
+            } elseif ($edition -eq "Professional") {
+                "PyCharm $version*"
+            } else {
+                "PyCharm*$version*"
+            }
+
+            $matchingFolders = Get-ChildItem -Path $basePath -Directory -Filter $pattern -ErrorAction SilentlyContinue
+            foreach ($folder in $matchingFolders) {
+                $foldersToCheck += $folder.FullName
+            }
+        }
+    }
+
+    # Remove duplicates
+    $foldersToCheck = $foldersToCheck | Select-Object -Unique
+
+    foreach ($folder in $foldersToCheck) {
+        if (Test-Path $folder) {
+            try {
+                Write-Log "Removing leftover folder: $folder" "INFO"
+
+                if ($PSCmdlet.ShouldProcess($folder, "Remove Directory")) {
+                    Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
+                    Write-Log "Successfully removed folder: $folder" "SUCCESS"
+                } else {
+                    Write-Log "WhatIf: Would remove folder $folder" "INFO"
+                }
+            }
+            catch {
+                Write-Log "Failed to remove folder $folder: $_" "WARNING"
+            }
+        }
+    }
+}
+
 # Function to uninstall a PyCharm version
 function Uninstall-PyCharm {
     param(
@@ -166,13 +228,24 @@ function Uninstall-PyCharm {
 
                 if ($process.ExitCode -eq 0) {
                     Write-Log "Successfully uninstalled: $($Installation.DisplayName)" "SUCCESS"
+
+                    # Clean up leftover installation folders
+                    Start-Sleep -Seconds 2  # Wait for uninstaller to release file locks
+                    Remove-LeftoverFolders -Installation $Installation
+
                     return $true
                 } else {
                     Write-Log "Uninstall returned exit code $($process.ExitCode) for: $($Installation.DisplayName)" "WARNING"
+
+                    # Still try to clean up folders even if uninstaller returned non-zero
+                    Start-Sleep -Seconds 2
+                    Remove-LeftoverFolders -Installation $Installation
+
                     return $false
                 }
             } else {
                 Write-Log "WhatIf: Would uninstall $($Installation.DisplayName)" "INFO"
+                Write-Log "WhatIf: Would check for and remove leftover folders" "INFO"
                 return $true
             }
         }

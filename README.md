@@ -11,12 +11,12 @@ When PyCharm is installed or updated via Chocolatey, old versions sometimes rema
 - Detects all PyCharm installations (Community and Professional editions)
 - Automatically identifies the latest version
 - Uninstalls old versions silently
+- **Cleans up leftover installation folders** after uninstall
 - Supports keeping multiple recent versions
 - Comprehensive logging
 - WhatIf mode for safe testing
 - Works with both HKLM and HKCU registry locations
 - Silent mode for automated deployments
-- Device inventory marker for dynamic group targeting
 
 ## Files Included
 
@@ -24,7 +24,7 @@ When PyCharm is installed or updated via Chocolatey, old versions sometimes rema
 |------|-------------|
 | `Uninstall-OldPyCharm.ps1` | Main script that removes old PyCharm versions |
 | `Detect-OldPyCharm.ps1` | Detection script for Intune Remediations |
-| `Set-PyCharmMarker.ps1` | Inventory script that sets registry marker for device grouping |
+| `Set-PyCharmMarker.ps1` | Inventory script that sets registry marker for device grouping (optional - for advanced scenarios) |
 | `README.md` | This file - comprehensive documentation |
 | `EXAMPLES.md` | Detailed examples for various deployment scenarios |
 | `LICENSE` | MIT License |
@@ -206,7 +206,11 @@ Register-ScheduledTask -TaskName "PyCharm Cleanup" -Action $action -Trigger $tri
 4. **Sorts by Version**: Orders installations by version number (newest first)
 5. **Keeps Latest**: Retains the specified number of most recent versions
 6. **Uninstalls Old Versions**: Executes silent uninstall for older versions
-7. **Logs Everything**: Creates detailed log file of all operations
+7. **Cleans Up Folders**: Removes leftover installation directories after uninstall
+   - Checks registry InstallLocation path
+   - Scans common JetBrains installation directories
+   - Removes matching folders even if uninstaller left them behind
+8. **Logs Everything**: Creates detailed log file of all operations
 
 ## Logging
 
@@ -241,6 +245,17 @@ Ensure PyCharm was installed via the standard installer. Portable versions or cu
 
 Ensure you're running without the `-WhatIf` parameter when ready to perform actual uninstallation.
 
+### Leftover folders after uninstall
+
+The script automatically detects and removes leftover installation folders after running the uninstaller. This includes:
+- The InstallLocation path from registry
+- Common JetBrains installation directories (C:\Program Files\JetBrains\PyCharm*)
+- Version-specific folders that may have been left behind
+
+If manual cleanup is needed, check these locations:
+- `C:\Program Files\JetBrains\`
+- `C:\Program Files (x86)\JetBrains\`
+
 ## Examples
 
 ### Example 1: First Run
@@ -261,10 +276,14 @@ PS> .\Uninstall-OldPyCharm.ps1
 [2025-11-17 10:30:16] [INFO] Uninstalling 2 old version(s):
 [2025-11-17 10:30:16] [INFO] Uninstalling: PyCharm Community Edition 2024.1.0 (Version: 2024.1.0)
 [2025-11-17 10:30:35] [SUCCESS] Successfully uninstalled: PyCharm Community Edition 2024.1.0
-[2025-11-17 10:30:35] [INFO] Uninstalling: PyCharm Community Edition 2023.3.2 (Version: 2023.3.2)
+[2025-11-17 10:30:37] [INFO] Removing leftover folder: C:\Program Files\JetBrains\PyCharm Community Edition 2024.1.0
+[2025-11-17 10:30:37] [SUCCESS] Successfully removed folder: C:\Program Files\JetBrains\PyCharm Community Edition 2024.1.0
+[2025-11-17 10:30:37] [INFO] Uninstalling: PyCharm Community Edition 2023.3.2 (Version: 2023.3.2)
 [2025-11-17 10:30:52] [SUCCESS] Successfully uninstalled: PyCharm Community Edition 2023.3.2
-[2025-11-17 10:30:52] [INFO] === PyCharm Cleanup Completed ===
-[2025-11-17 10:30:52] [INFO] Summary: 1 version(s) kept, 2 version(s) uninstalled
+[2025-11-17 10:30:54] [INFO] Removing leftover folder: C:\Program Files\JetBrains\PyCharm Community Edition 2023.3.2
+[2025-11-17 10:30:54] [SUCCESS] Successfully removed folder: C:\Program Files\JetBrains\PyCharm Community Edition 2023.3.2
+[2025-11-17 10:30:54] [INFO] === PyCharm Cleanup Completed ===
+[2025-11-17 10:30:54] [INFO] Summary: 1 version(s) kept, 2 version(s) uninstalled
 ```
 
 ## License
