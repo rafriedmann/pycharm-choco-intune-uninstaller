@@ -28,6 +28,7 @@ When PyCharm is installed or updated via Chocolatey, old versions sometimes rema
 | `README.md` | This file - comprehensive documentation |
 | `EXAMPLES.md` | Detailed examples for various deployment scenarios |
 | `LICENSING.md` | License tier requirements and deployment options for minimal licenses |
+| `PERFORMANCE.md` | Performance characteristics and impact analysis |
 | `LICENSE` | MIT License |
 
 ## Requirements
@@ -112,6 +113,8 @@ Note: Logging to file still occurs in silent mode.
 - **Minimal (Intune Plan 1)**: Use PowerShell Scripts with static groups (Option 1)
 - **Standard (Intune Plan 2)**: Use Remediations with All Devices assignment (Option 2) - Recommended
 - **Premium (Plan 2 + Azure AD P1)**: All options available including dynamic groups
+
+**Performance Note:** The script has **early exit optimization** - devices without PyCharm exit in ~0.1-0.3 seconds (just a registry scan). This ensures minimal impact on Windows deployments when assigned to all devices.
 
 To deploy this script via Microsoft Intune:
 
