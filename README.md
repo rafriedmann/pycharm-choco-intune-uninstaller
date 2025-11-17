@@ -1,0 +1,191 @@
+# PyCharm Chocolatey Uninstaller
+
+A PowerShell tool to automatically uninstall old versions of PyCharm that were installed via Chocolatey. This solves the common issue where Chocolatey or PyCharm installers fail to remove previous versions during updates, leading to multiple versions accumulating on the system.
+
+## Problem Statement
+
+When PyCharm is installed or updated via Chocolatey, old versions sometimes remain installed on the system. This tool identifies all installed PyCharm versions and uninstalls older ones, keeping only the latest version (or a specified number of recent versions).
+
+## Features
+
+- Detects all PyCharm installations (Community and Professional editions)
+- Automatically identifies the latest version
+- Uninstalls old versions silently
+- Supports keeping multiple recent versions
+- Comprehensive logging
+- WhatIf mode for safe testing
+- Works with both HKLM and HKCU registry locations
+
+## Requirements
+
+- Windows operating system
+- PowerShell 5.1 or later
+- Administrator privileges
+
+## Usage
+
+### Basic Usage
+
+Run as Administrator to uninstall all old PyCharm versions, keeping only the latest:
+
+```powershell
+.\Uninstall-OldPyCharm.ps1
+```
+
+### Test Mode (WhatIf)
+
+See what would be uninstalled without actually doing it:
+
+```powershell
+.\Uninstall-OldPyCharm.ps1 -WhatIf
+```
+
+### Keep Multiple Versions
+
+Keep the 2 most recent versions:
+
+```powershell
+.\Uninstall-OldPyCharm.ps1 -KeepVersions 2
+```
+
+### Target Specific Edition
+
+Only clean up PyCharm Community Edition:
+
+```powershell
+.\Uninstall-OldPyCharm.ps1 -Edition Community
+```
+
+Only clean up PyCharm Professional Edition:
+
+```powershell
+.\Uninstall-OldPyCharm.ps1 -Edition Professional
+```
+
+### Custom Log Location
+
+Specify a custom log file location:
+
+```powershell
+.\Uninstall-OldPyCharm.ps1 -LogPath "C:\Logs\PyCharmCleanup.log"
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `KeepVersions` | Integer | 1 | Number of most recent versions to keep |
+| `Edition` | String | 'All' | Target edition: 'Community', 'Professional', or 'All' |
+| `LogPath` | String | `.\PyCharmCleanup.log` | Path to write log file |
+| `WhatIf` | Switch | False | Preview what would be uninstalled without doing it |
+
+## Intune Deployment
+
+To deploy this script via Microsoft Intune:
+
+### As a Remediation Script
+
+1. In Intune, go to **Devices** > **Remediations**
+2. Create a new script package
+3. **Detection script**: Check if multiple PyCharm versions exist
+4. **Remediation script**: Use `Uninstall-OldPyCharm.ps1`
+5. Configure to run in **System context**
+6. Assign to target device groups
+
+### As a PowerShell Script
+
+1. In Intune, go to **Devices** > **Scripts** > **Add** > **Windows 10 and later**
+2. Upload `Uninstall-OldPyCharm.ps1`
+3. Configure settings:
+   - Run this script using the logged on credentials: **No**
+   - Enforce script signature check: **No** (unless you sign it)
+   - Run script in 64-bit PowerShell: **Yes**
+4. Assign to target groups
+
+### Scheduled Task (GPO or Intune)
+
+Create a scheduled task that runs monthly to prevent accumulation:
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -File C:\Scripts\Uninstall-OldPyCharm.ps1"
+$trigger = New-ScheduledTaskTrigger -Weekly -At 2am -DaysOfWeek Sunday
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest
+Register-ScheduledTask -TaskName "PyCharm Cleanup" -Action $action -Trigger $trigger -Principal $principal
+```
+
+## How It Works
+
+1. **Scans Registry**: Checks both HKLM and HKCU uninstall registry keys for PyCharm installations
+2. **Parses Versions**: Extracts version numbers from display names (e.g., "PyCharm Community Edition 2024.2.1")
+3. **Groups by Edition**: Separates Community and Professional editions
+4. **Sorts by Version**: Orders installations by version number (newest first)
+5. **Keeps Latest**: Retains the specified number of most recent versions
+6. **Uninstalls Old Versions**: Executes silent uninstall for older versions
+7. **Logs Everything**: Creates detailed log file of all operations
+
+## Logging
+
+The script creates a detailed log file (default: `PyCharmCleanup.log`) in the script directory. The log includes:
+
+- Timestamp for each operation
+- All detected installations
+- Versions kept and uninstalled
+- Success/failure status
+- Any errors encountered
+
+## Exit Codes
+
+- `0`: Success
+- `1`: Error occurred (check log file for details)
+
+## Troubleshooting
+
+### Script requires Administrator privileges
+
+Run PowerShell as Administrator before executing the script.
+
+### Uninstall fails with non-zero exit code
+
+Some PyCharm versions may have corrupted uninstallers. Check the log file for details and consider manually removing these installations.
+
+### No installations found
+
+Ensure PyCharm was installed via the standard installer. Portable versions or custom installations may not be detected.
+
+### WhatIf shows versions but nothing uninstalls
+
+Ensure you're running without the `-WhatIf` parameter when ready to perform actual uninstallation.
+
+## Examples
+
+### Example 1: First Run
+
+```powershell
+PS> .\Uninstall-OldPyCharm.ps1
+
+[2025-11-17 10:30:15] [INFO] === PyCharm Cleanup Script Started ===
+[2025-11-17 10:30:15] [INFO] Parameters: KeepVersions=1, Edition=All
+[2025-11-17 10:30:15] [INFO] Scanning for PyCharm installations...
+[2025-11-17 10:30:16] [INFO] Found 3 PyCharm installation(s)
+[2025-11-17 10:30:16] [INFO] Processing PyCharm Community Edition: 3 version(s) found
+[2025-11-17 10:30:16] [INFO]   - PyCharm Community Edition 2024.2.1 (Version: 2024.2.1)
+[2025-11-17 10:30:16] [INFO]   - PyCharm Community Edition 2024.1.0 (Version: 2024.1.0)
+[2025-11-17 10:30:16] [INFO]   - PyCharm Community Edition 2023.3.2 (Version: 2023.3.2)
+[2025-11-17 10:30:16] [INFO] Keeping 1 version(s):
+[2025-11-17 10:30:16] [SUCCESS]   ✓ PyCharm Community Edition 2024.2.1 (Version: 2024.2.1)
+[2025-11-17 10:30:16] [INFO] Uninstalling 2 old version(s):
+[2025-11-17 10:30:16] [INFO] Uninstalling: PyCharm Community Edition 2024.1.0 (Version: 2024.1.0)
+[2025-11-17 10:30:35] [SUCCESS] Successfully uninstalled: PyCharm Community Edition 2024.1.0
+[2025-11-17 10:30:35] [INFO] Uninstalling: PyCharm Community Edition 2023.3.2 (Version: 2023.3.2)
+[2025-11-17 10:30:52] [SUCCESS] Successfully uninstalled: PyCharm Community Edition 2023.3.2
+[2025-11-17 10:30:52] [INFO] === PyCharm Cleanup Completed ===
+[2025-11-17 10:30:52] [INFO] Summary: 1 version(s) kept, 2 version(s) uninstalled
+```
+
+## License
+
+MIT License - Feel free to use and modify as needed.
+
+## Contributing
+
+Contributions are welcome! Please submit issues or pull requests on the project repository.

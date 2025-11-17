@@ -1,0 +1,22 @@
+# Log files
+*.log
+
+# PowerShell temporary files
+*.tmp
+*.temp
+
+# Windows thumbnails
+Thumbs.db
+
+# Backup files
+*.bak
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test output
+test-results/
