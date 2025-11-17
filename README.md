@@ -126,105 +126,66 @@ To deploy this script via Microsoft Intune:
    - Run script in 64-bit PowerShell: **Yes**
 4. Assign to target groups
 
-### Creating a Dynamic Group for Devices with PyCharm
+### Targeting Devices with PyCharm (No Additional Scripts Needed)
 
-To automatically target only devices that have PyCharm installed, you can create a dynamic device group in Intune.
+You can target only devices with PyCharm installed using Intune's built-in features. **No additional scripts required** - Intune already reads the existing PyCharm registry entries.
 
-#### Option 1: Using Custom Device Properties (Recommended)
+**Registry Keys Used by PyCharm (and scanned by Intune):**
+- `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*`
+- `HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*`
 
-Since Intune doesn't natively expose installed applications in dynamic group rules, use a detection script to set a custom registry value, then create a compliance policy to read it.
+#### Option 1: Use Discovered Apps (Recommended)
 
-1. **Create a Detection Script** (`Set-PyCharmMarker.ps1`):
-```powershell
-# Check if PyCharm is installed
-$pyCharmInstalled = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" |
-    Where-Object { $_.DisplayName -like "PyCharm*" }
+Intune automatically inventories installed applications from registry keys.
 
-if ($pyCharmInstalled) {
-    # Set a marker in registry for dynamic group detection
-    $registryPath = "HKLM:\SOFTWARE\YourCompany\Inventory"
-    if (-not (Test-Path $registryPath)) {
-        New-Item -Path $registryPath -Force | Out-Null
-    }
-    Set-ItemProperty -Path $registryPath -Name "PyCharmInstalled" -Value "True" -Type String
-    Write-Host "PyCharm detected and marker set"
-    exit 0
-} else {
-    Write-Host "PyCharm not installed"
-    exit 0
-}
-```
-
-2. **Deploy Detection Script via Intune**:
-   - Go to **Devices** > **Scripts** > **Add** > **Windows 10 and later**
-   - Upload the detection script
-   - Assign to **All Devices**
-   - Schedule to run daily or weekly
-
-3. **Create Custom Compliance Policy**:
-   - Go to **Devices** > **Compliance policies** > **Create policy**
-   - Platform: **Windows 10 and later**
-   - Add a custom compliance setting using a detection script:
-```powershell
-$marker = Get-ItemProperty -Path "HKLM:\SOFTWARE\YourCompany\Inventory" -Name "PyCharmInstalled" -ErrorAction SilentlyContinue
-if ($marker.PyCharmInstalled -eq "True") {
-    return "Compliant"
-}
-```
-   - This creates a device property you can reference
-
-4. **Alternative: Use Dynamic Group with Device Name Pattern**:
-
-   If your organization uses naming conventions, create a dynamic group:
-   - Go to **Azure Active Directory** > **Groups** > **New group**
-   - Group type: **Security**
-   - Membership type: **Dynamic Device**
-   - Click **Add dynamic query**
-   - Use rule syntax like:
-   ```
-   (device.displayName -contains "DEV") or (device.displayName -contains "WORKSTATION")
-   ```
-
-#### Option 2: Using Intune Detected Apps Report
-
-1. **Query Intune for Devices with PyCharm**:
-   - Go to **Apps** > **Monitor** > **Discovered apps**
-   - Search for "PyCharm"
-   - Export the list of devices
-   - Create a static group with these devices
-
-2. **Create the Device Group**:
-   - Go to **Groups** > **New group**
-   - Group type: **Security**
-   - Membership type: **Assigned** (static)
+**Steps:**
+1. Go to **Apps** > **Monitor** > **Discovered apps**
+2. Search for "PyCharm"
+3. Click on the PyCharm app entry
+4. View **Device install status** tab to see which devices have it
+5. Export the device list (optional)
+6. Create a static group:
+   - **Groups** > **New group**
+   - Name: `Devices - PyCharm Installed`
+   - Type: **Security**, Membership: **Assigned**
    - Add devices from the discovered apps list
+7. Assign remediation to this group
 
-#### Option 3: Use Hardware Inventory Extensions (Advanced)
+**Pros:** Uses existing registry keys, no additional scripts
+**Cons:** Static group requires periodic updates
 
-For organizations using Configuration Manager co-management or Intune endpoint analytics:
+#### Option 2: Assign to All Devices (Simplest)
 
-1. **Enable Endpoint Analytics**
-2. **Query device inventory** for PyCharm installations
-3. **Export and create static group** or use reporting workbooks
+The **easiest approach** - let the detection script handle targeting:
 
-#### Recommended Approach
+1. Assign remediation to **All Devices** or **All Developers**
+2. The `Detect-OldPyCharm.ps1` script automatically detects PyCharm
+3. Only devices with multiple PyCharm versions get remediated
 
-For most organizations, the **simplest approach** is:
+**How it works:**
+- Device without PyCharm → Detection exits 0 (no action)
+- Device with one PyCharm → Detection exits 0 (no action)
+- Device with multiple PyCharm versions → Detection exits 1 → Remediation runs
 
-1. Deploy the detection script to **All Devices** that sets a registry marker
-2. Create a **static group** initially based on Discovered Apps report
-3. Use the **Remediation** feature with assignments to this group
-4. Let the Remediation detection script handle future device identification automatically
+**Pros:** Zero configuration, self-maintaining, automatically handles new installations
+**Cons:** Detection runs on all assigned devices (minimal overhead)
 
-The Intune Remediation feature (Option 1 above) automatically handles device targeting because:
-- Detection script runs on all assigned devices
-- Only devices where detection fails get remediation
-- No need for complex dynamic groups
+#### Option 3: Dynamic Group by Department/Naming
 
-**Quick Setup:**
-1. Create a group called "Devices - PyCharm Users" (static or dynamic based on department/OU)
-2. Assign the Remediation package to this group
-3. The detection script (`Detect-OldPyCharm.ps1`) will identify which devices actually need cleanup
+If using device naming conventions or department attributes:
+
+1. Create dynamic group in **Azure AD** > **Groups**
+2. Use query like:
+   ```
+   (device.displayName -startsWith "DEV-")
+   ```
+   or
+   ```
+   (device.departmentName -eq "Engineering")
+   ```
+3. Assign remediation to this group
+
+**Recommended:** Use Option 2 (All Devices) for simplicity, or Option 1 (Discovered Apps) for targeted deployment.
 
 ### Scheduled Task (GPO or Intune)
 

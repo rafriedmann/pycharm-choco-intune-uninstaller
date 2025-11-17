@@ -123,7 +123,122 @@ The **simplest approach** doesn't require a specific device group:
    - Add appropriate scope tags for your organization
 
 6. **Assignments**
-   - Assign to device groups with PyCharm installations
+   - See "Device Targeting Options" below for how to target devices
+
+### Device Targeting Options
+
+You have three options for targeting devices. All options use the **existing registry keys** created by PyCharm - no additional scripts needed.
+
+#### Option A: Assign to All Devices (Recommended)
+
+**The simplest approach:**
+
+1. In the Assignments step above, select **All Devices** (or **All Developers**)
+2. The `Detect-OldPyCharm.ps1` script automatically finds PyCharm installations
+3. Only devices with multiple versions get remediated
+
+**Example flow:**
+```
+Remediation runs on device
+  ↓
+Device has no PyCharm
+  → Detection script exits 0 (compliant, no action)
+
+Device has one PyCharm version
+  → Detection script exits 0 (compliant, no action)
+
+Device has multiple PyCharm versions
+  → Detection script exits 1 (needs remediation)
+  → Uninstall-OldPyCharm.ps1 runs automatically
+```
+
+**Benefits:**
+- Zero configuration
+- Self-maintaining
+- No group management needed
+- Automatically handles new PyCharm installations
+
+#### Option B: Use Discovered Apps to Create Static Group
+
+**For targeted deployment to only PyCharm devices:**
+
+1. **Query for Devices with PyCharm**:
+   - Sign in to [Microsoft Intune admin center](https://intune.microsoft.com)
+   - Go to **Apps** > **Monitor** > **Discovered apps**
+   - Type "PyCharm" in the search box
+   - Click on "PyCharm Community Edition" or "PyCharm Professional"
+   - Click the **Device install status** tab
+   - You'll see all devices with PyCharm installed
+
+2. **Export Device List** (optional):
+   - Click **Export** to download CSV
+   - Contains device names and user information
+
+3. **Create Static Device Group**:
+   - Go to **Groups** > **New group**
+   - Group type: **Security**
+   - Group name: `Devices - PyCharm Installed`
+   - Membership type: **Assigned** (static)
+   - Click **Members** > **Add members**
+   - Search for and add devices from the discovered apps list
+   - Click **Create**
+
+4. **Assign Remediation**:
+   - Return to your remediation package
+   - Click **Assignments**
+   - Assign to: `Devices - PyCharm Installed` group
+   - Schedule: **Weekly** or **Daily**
+
+**Benefits:**
+- Only targets devices that actually have PyCharm
+- Can track which devices are affected
+- Good for initial cleanup deployment
+
+**Maintenance:**
+- Periodically re-export from Discovered Apps to update group
+- Or switch to Option A for automatic coverage
+
+#### Option C: Dynamic Group by Department/Naming
+
+**For organizations with device naming conventions:**
+
+1. **Create Dynamic Group**:
+   - Go to **Azure Active Directory** > **Groups** > **New group**
+   - Group type: **Security**
+   - Group name: `Devices - Developers`
+   - Membership type: **Dynamic Device**
+   - Click **Add dynamic query**
+
+2. **Add Query Rule** - Examples:
+
+   By device name prefix:
+   ```
+   (device.displayName -startsWith "DEV-")
+   ```
+
+   By device name pattern:
+   ```
+   (device.displayName -contains "WORKSTATION")
+   ```
+
+   By department (if populated):
+   ```
+   (device.departmentName -eq "Engineering")
+   ```
+
+   Multiple criteria:
+   ```
+   (device.displayName -startsWith "DEV-") or (device.departmentName -eq "Engineering")
+   ```
+
+3. **Save and Assign**:
+   - Save the dynamic group
+   - Assign remediation to this group
+
+**Benefits:**
+- Automatically includes new developer machines
+- No manual group updates
+- Works well if you have consistent naming/department attributes
 
 ## Command-Line Examples
 
