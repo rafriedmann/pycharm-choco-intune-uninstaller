@@ -145,6 +145,105 @@ Device has multiple PyCharm versions
 - No manual group updates
 - Works well if you have consistent naming/department attributes
 
+#### Option D: Dynamic Group Using Compliance Policy (Advanced)
+
+**For truly dynamic groups based on actual PyCharm installation:**
+
+This approach uses Intune's compliance policies to read the **existing PyCharm registry keys**, then creates a dynamic group based on compliance status. No additional scripts needed!
+
+**Step 1: Create Custom Compliance Policy**
+
+1. **Navigate to Compliance Policies**:
+   - Go to **Devices** > **Compliance policies** > **Create policy**
+   - Platform: **Windows 10 and later**
+   - Name: `Detect PyCharm Installation`
+
+2. **Add Custom Compliance Setting**:
+   - Click **Settings** > **Custom Compliance**
+   - Click **Add** to create a new detection script
+   - Name: `PyCharm Detection`
+
+3. **Create Detection Script**:
+   ```powershell
+   # Check existing PyCharm registry keys
+   $pycharmFound = $false
+
+   $registryPaths = @(
+       "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+       "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+   )
+
+   foreach ($path in $registryPaths) {
+       $apps = Get-ItemProperty $path -ErrorAction SilentlyContinue |
+           Where-Object { $_.DisplayName -like "PyCharm*" }
+
+       if ($apps) {
+           $pycharmFound = $true
+           break
+       }
+   }
+
+   if ($pycharmFound) {
+       return @{ PyCharmInstalled = $true }
+   } else {
+       return @{ PyCharmInstalled = $false }
+   }
+   ```
+
+4. **Configure Compliance Rule**:
+   - Data type: **Boolean**
+   - Setting name: `PyCharmInstalled`
+   - Operator: **Equals**
+   - Value: **True**
+
+5. **Assign the Policy**:
+   - Assign to **All Devices** (to scan all devices)
+   - This policy just detects, it doesn't enforce anything
+
+**Step 2: Create Dynamic Device Group Based on Compliance**
+
+1. **Create Dynamic Group**:
+   - Go to **Azure Active Directory** > **Groups** > **New group**
+   - Group type: **Security**
+   - Group name: `Devices - PyCharm Installed (Dynamic)`
+   - Membership type: **Dynamic Device**
+
+2. **Add Dynamic Query**:
+   ```
+   (device.deviceComplianceStatus -eq "Compliant") -and (device.displayName -ne "")
+   ```
+
+   Note: This requires the compliance policy to mark devices as compliant. Alternatively, if using Intune's device properties, you might need to use Microsoft Graph API to filter based on compliance policy results.
+
+3. **Alternative: Use Filters for Assignment**
+   - Instead of a dynamic group, use Assignment Filters
+   - Go to **Tenant administration** > **Filters** > **Create**
+   - Platform: **Windows 10 and later**
+   - Filter name: `Has PyCharm Installed`
+   - Rule: Based on device compliance policy results
+
+**Step 3: Assign Remediation to the Group/Filter**
+
+1. Go to your PyCharm cleanup remediation
+2. Assign to the dynamic group or use the assignment filter
+3. All devices with PyCharm will automatically be included
+
+**Benefits:**
+- ✓ Truly dynamic - automatically updates as PyCharm is installed/removed
+- ✓ Uses existing PyCharm registry keys (no additional markers)
+- ✓ Leverages Intune's built-in compliance engine
+- ✓ No manual group maintenance
+
+**Limitations:**
+- More complex setup than other options
+- Compliance policy evaluation runs on Intune's schedule (typically 8 hours)
+- Requires understanding of compliance policies and dynamic groups
+
+**When to Use:**
+- Large organizations needing precise, auto-updating device groups
+- Compliance reporting requirements
+- Integration with other compliance-based workflows
+
 ## Command-Line Examples
 
 ### Example 1: Dry Run (Test Mode)

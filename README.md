@@ -185,7 +185,19 @@ If using device naming conventions or department attributes:
    ```
 3. Assign remediation to this group
 
-**Recommended:** Use Option 2 (All Devices) for simplicity, or Option 1 (Discovered Apps) for targeted deployment.
+#### Option 4: Dynamic Group via Compliance Policy (Advanced)
+
+For truly dynamic groups, create a custom compliance policy that reads existing PyCharm registry keys, then create a dynamic device group based on compliance status.
+
+See `EXAMPLES.md` for detailed step-by-step instructions on:
+- Creating a custom compliance policy to detect PyCharm
+- Setting up dynamic groups based on compliance results
+- Using assignment filters as an alternative
+
+**Benefits:** Fully automatic, updates as PyCharm is installed/removed
+**Limitation:** More complex setup, requires compliance policy knowledge
+
+**Recommended:** Use Option 2 (All Devices) for simplicity, or Option 1 (Discovered Apps) for targeted deployment. Use Option 4 for enterprise scenarios requiring auto-updating groups.
 
 ### Scheduled Task (GPO or Intune)
 
