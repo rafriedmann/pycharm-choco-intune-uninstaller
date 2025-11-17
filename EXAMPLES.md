@@ -84,11 +84,24 @@ What if: Performing the operation "Uninstall" on target "PyCharm Community Editi
 .\Uninstall-OldPyCharm.ps1 -LogPath "C:\Logs\IT\PyCharmCleanup.log"
 ```
 
-### Example 6: Combine Parameters
+### Example 6: Silent Mode
 
 ```powershell
-# Keep 2 versions, only Community, custom log path
-.\Uninstall-OldPyCharm.ps1 -KeepVersions 2 -Edition Community -LogPath "C:\Logs\PyCharm.log"
+# Run silently without console output (useful for scheduled tasks)
+.\Uninstall-OldPyCharm.ps1 -Silent
+```
+
+**Benefits:**
+- No console output cluttering scheduled task logs
+- Faster execution (no console I/O overhead)
+- Still creates detailed log file
+- Perfect for automated/unattended scenarios
+
+### Example 7: Combine Parameters
+
+```powershell
+# Keep 2 versions, only Community, custom log path, silent mode
+.\Uninstall-OldPyCharm.ps1 -KeepVersions 2 -Edition Community -LogPath "C:\Logs\PyCharm.log" -Silent
 ```
 
 ## Scheduled Task Examples
@@ -98,7 +111,7 @@ What if: Performing the operation "Uninstall" on target "PyCharm Community Editi
 ```powershell
 # Create a scheduled task that runs monthly
 $action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
-    -Argument "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File C:\Scripts\Uninstall-OldPyCharm.ps1"
+    -Argument "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File C:\Scripts\Uninstall-OldPyCharm.ps1 -Silent"
 
 $trigger = New-ScheduledTaskTrigger -Monthly -At 2AM -DaysOfMonth 1
 
@@ -118,7 +131,7 @@ Register-ScheduledTask -TaskName "PyCharm Cleanup - Monthly" `
 ```powershell
 # Create a scheduled task that runs weekly on Sunday
 $action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
-    -Argument "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File C:\Scripts\Uninstall-OldPyCharm.ps1"
+    -Argument "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File C:\Scripts\Uninstall-OldPyCharm.ps1 -Silent"
 
 $trigger = New-ScheduledTaskTrigger -Weekly -At 3AM -DaysOfWeek Sunday
 
@@ -135,7 +148,7 @@ Register-ScheduledTask -TaskName "PyCharm Cleanup - Weekly" `
 ```powershell
 # Run once after a specific date/time
 $action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
-    -Argument "-ExecutionPolicy Bypass -NoProfile -File C:\Scripts\Uninstall-OldPyCharm.ps1"
+    -Argument "-ExecutionPolicy Bypass -NoProfile -File C:\Scripts\Uninstall-OldPyCharm.ps1 -Silent"
 
 $trigger = New-ScheduledTaskTrigger -Once -At "2025-11-20 2:00AM"
 

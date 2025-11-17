@@ -70,6 +70,16 @@ Specify a custom log file location:
 .\Uninstall-OldPyCharm.ps1 -LogPath "C:\Logs\PyCharmCleanup.log"
 ```
 
+### Silent Mode
+
+Run without console output (useful for scheduled tasks and automated deployments):
+
+```powershell
+.\Uninstall-OldPyCharm.ps1 -Silent
+```
+
+Note: Logging to file still occurs in silent mode.
+
 ## Parameters
 
 | Parameter | Type | Default | Description |
@@ -77,6 +87,7 @@ Specify a custom log file location:
 | `KeepVersions` | Integer | 1 | Number of most recent versions to keep |
 | `Edition` | String | 'All' | Target edition: 'Community', 'Professional', or 'All' |
 | `LogPath` | String | `.\PyCharmCleanup.log` | Path to write log file |
+| `Silent` | Switch | False | Suppresses console output (logging to file still occurs) |
 | `WhatIf` | Switch | False | Preview what would be uninstalled without doing it |
 
 ## Intune Deployment
