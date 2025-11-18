@@ -81,21 +81,21 @@ try {
 
     if ($pyCharmInstalled) {
         # Set marker to True
-        Set-ItemProperty -Path $RegistryPath -Name $MarkerName -Value "True" -Type String
+        Set-ItemProperty -Path $RegistryPath -Name $MarkerName -Value "True" -PropertyType String
 
         # Store additional metadata
         if ($editions.Count -gt 0) {
             $uniqueEditions = $editions | Select-Object -Unique
-            Set-ItemProperty -Path $RegistryPath -Name "PyCharmEditions" -Value ($uniqueEditions -join ",") -Type String
+            Set-ItemProperty -Path $RegistryPath -Name "PyCharmEditions" -Value ($uniqueEditions -join ",") -PropertyType String
         }
 
         if ($versions.Count -gt 0) {
             $uniqueVersions = $versions | Select-Object -Unique
-            Set-ItemProperty -Path $RegistryPath -Name "PyCharmVersions" -Value ($uniqueVersions -join ",") -Type String
+            Set-ItemProperty -Path $RegistryPath -Name "PyCharmVersions" -Value ($uniqueVersions -join ",") -PropertyType String
         }
 
-        Set-ItemProperty -Path $RegistryPath -Name "PyCharmLastDetected" -Value (Get-Date -Format "yyyy-MM-dd HH:mm:ss") -Type String
-        Set-ItemProperty -Path $RegistryPath -Name "PyCharmCount" -Value $versions.Count -Type String
+        Set-ItemProperty -Path $RegistryPath -Name "PyCharmLastDetected" -Value (Get-Date -Format "yyyy-MM-dd HH:mm:ss") -PropertyType String
+        Set-ItemProperty -Path $RegistryPath -Name "PyCharmCount" -Value $versions.Count -PropertyType String
 
         Write-Host "PyCharm detected - Marker set to True"
         Write-Host "Editions: $($uniqueEditions -join ', ')"
@@ -103,8 +103,8 @@ try {
         exit 0
     } else {
         # Set marker to False or remove it
-        Set-ItemProperty -Path $RegistryPath -Name $MarkerName -Value "False" -Type String
-        Set-ItemProperty -Path $RegistryPath -Name "PyCharmLastChecked" -Value (Get-Date -Format "yyyy-MM-dd HH:mm:ss") -Type String
+        Set-ItemProperty -Path $RegistryPath -Name $MarkerName -Value "False" -PropertyType String
+        Set-ItemProperty -Path $RegistryPath -Name "PyCharmLastChecked" -Value (Get-Date -Format "yyyy-MM-dd HH:mm:ss") -PropertyType String
 
         Write-Host "PyCharm not detected - Marker set to False"
         exit 0

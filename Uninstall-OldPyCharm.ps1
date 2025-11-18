@@ -194,7 +194,7 @@ function Remove-LeftoverFolders {
                 }
             }
             catch {
-                Write-Log "Failed to remove folder $folder: $_" "WARNING"
+                Write-Log "Failed to remove folder ${folder}: $_" "WARNING"
             }
         }
     }
