@@ -19,12 +19,12 @@
 .PARAMETER LogPath
     Path to write log file (default: current directory\PyCharmCleanup.log)
 
-.PARAMETER Silent
-    Suppresses console output. Logging to file still occurs.
+.PARAMETER ShowOutput
+    Enables console output. By default, the script runs silently with logging to file only.
 
 .EXAMPLE
     .\Uninstall-OldPyCharm.ps1
-    Uninstalls all old PyCharm versions, keeping only the latest.
+    Uninstalls all old PyCharm versions silently, keeping only the latest.
 
 .EXAMPLE
     .\Uninstall-OldPyCharm.ps1 -WhatIf
@@ -39,8 +39,8 @@
     Only cleans up PyCharm Community Edition installations.
 
 .EXAMPLE
-    .\Uninstall-OldPyCharm.ps1 -Silent
-    Runs silently without console output (useful for scheduled tasks).
+    .\Uninstall-OldPyCharm.ps1 -ShowOutput
+    Runs with console output enabled (useful for testing and troubleshooting).
 #>
 
 [CmdletBinding(SupportsShouldProcess)]
@@ -56,7 +56,7 @@ param(
     [string]$LogPath = (Join-Path $PSScriptRoot "PyCharmCleanup.log"),
 
     [Parameter(Mandatory=$false)]
-    [switch]$Silent
+    [switch]$ShowOutput
 )
 
 #Requires -RunAsAdministrator
@@ -67,8 +67,8 @@ function Write-Log {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
 
-    # Write to console unless Silent mode is enabled
-    if (-not $Silent) {
+    # Write to console only if ShowOutput mode is enabled
+    if ($ShowOutput) {
         Write-Host $logMessage
     }
 
