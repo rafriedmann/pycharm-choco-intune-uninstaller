@@ -53,13 +53,14 @@ param(
     [string]$Edition = 'All',
 
     [Parameter(Mandatory=$false)]
-    [string]$LogPath = (Join-Path $PSScriptRoot "PyCharmCleanup.log"),
+    [string]$LogPath = (Join-Path $env:TEMP "PyCharmCleanup.log"),
 
     [Parameter(Mandatory=$false)]
     [switch]$ShowOutput
 )
 
-#Requires -RunAsAdministrator
+# Note: #Requires -RunAsAdministrator removed for Intune compatibility
+# Script checks elevation manually below
 
 # Initialize logging
 function Write-Log {
@@ -72,8 +73,15 @@ function Write-Log {
         Write-Host $logMessage
     }
 
-    # Always write to log file
-    Add-Content -Path $LogPath -Value $logMessage
+    # Always write to log file with error handling for Intune
+    try {
+        Add-Content -Path $LogPath -Value $logMessage -ErrorAction Stop
+    }
+    catch {
+        # If logging fails, write to console as fallback
+        Write-Host "[LOG ERROR] Failed to write to log file: $_"
+        Write-Host $logMessage
+    }
 }
 
 # Function to parse version from display name
@@ -264,13 +272,19 @@ function Uninstall-PyCharm {
 try {
     Write-Log "=== PyCharm Cleanup Script Started ===" "INFO"
     Write-Log "Parameters: KeepVersions=$KeepVersions, Edition=$Edition" "INFO"
+    Write-Log "Log file location: $LogPath" "INFO"
 
-    # Check if running as administrator
-    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $isAdmin) {
-        Write-Log "This script must be run as Administrator!" "ERROR"
-        throw "Administrator privileges required"
+    # Check if running with elevated privileges (Administrator or SYSTEM)
+    $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $isAdmin = ([Security.Principal.WindowsPrincipal] $currentIdentity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    $isSystem = $currentIdentity.IsSystem
+
+    if (-not ($isAdmin -or $isSystem)) {
+        Write-Log "This script must be run as Administrator or SYSTEM!" "ERROR"
+        throw "Elevated privileges required"
     }
+
+    Write-Log "Running as: $($currentIdentity.Name)" "INFO"
 
     # Get all PyCharm installations
     Write-Log "Scanning for PyCharm installations..." "INFO"
