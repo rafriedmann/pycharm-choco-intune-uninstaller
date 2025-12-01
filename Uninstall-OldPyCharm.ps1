@@ -326,7 +326,7 @@ try {
 
         Write-Log "Keeping $($toKeep.Count) version(s):" "INFO"
         foreach ($install in $toKeep) {
-            Write-Log "  ✓ $($install.DisplayName) (Version: $($install.Version))" "SUCCESS"
+            Write-Log "  [KEEP] $($install.DisplayName) (Version: $($install.Version))" "SUCCESS"
         }
         $totalKept += $toKeep.Count
 
@@ -346,6 +346,6 @@ try {
 }
 catch {
     Write-Log "Script failed with error: $_" "ERROR"
-    Write-Log $_.ScriptStackTrace "ERROR"
+    Write-Log "Stack trace: $($_.ScriptStackTrace)" "ERROR"
     exit 1
 }
