@@ -56,11 +56,18 @@ param(
     [string]$LogPath = (Join-Path $env:TEMP "PyCharmCleanup.log"),
 
     [Parameter(Mandatory=$false)]
-    [switch]$ShowOutput
+    [switch]$ShowOutput,
+
+    [Parameter(Mandatory=$false)]
+    [switch]$Force
 )
 
 # Note: #Requires -RunAsAdministrator removed for Intune compatibility
 # Script checks elevation manually below
+
+# Registry path for run-once marker
+$script:MarkerRegistryPath = "HKLM:\SOFTWARE\PyCharmCleanup"
+$script:MarkerValueName = "HasRun"
 
 # Initialize logging
 function Write-Log {
@@ -81,6 +88,34 @@ function Write-Log {
         # If logging fails, write to console as fallback
         Write-Host "[LOG ERROR] Failed to write to log file: $_"
         Write-Host $logMessage
+    }
+}
+
+# Function to check if script has already run
+function Test-HasRunMarker {
+    try {
+        if (Test-Path $script:MarkerRegistryPath) {
+            $value = Get-ItemProperty -Path $script:MarkerRegistryPath -Name $script:MarkerValueName -ErrorAction SilentlyContinue
+            return $null -ne $value
+        }
+    }
+    catch {
+        return $false
+    }
+    return $false
+}
+
+# Function to set the run marker
+function Set-HasRunMarker {
+    try {
+        if (-not (Test-Path $script:MarkerRegistryPath)) {
+            New-Item -Path $script:MarkerRegistryPath -Force | Out-Null
+        }
+        Set-ItemProperty -Path $script:MarkerRegistryPath -Name $script:MarkerValueName -Value (Get-Date -Format "yyyy-MM-dd HH:mm:ss") -Type String
+        Write-Log "Run marker set in registry" "INFO"
+    }
+    catch {
+        Write-Log "Failed to set run marker: $_" "WARNING"
     }
 }
 
@@ -286,6 +321,12 @@ try {
 
     Write-Log "Running as: $($currentIdentity.Name)" "INFO"
 
+    # Check if script has already run (unless -Force is specified)
+    if (-not $Force -and (Test-HasRunMarker)) {
+        Write-Log "Script has already run on this device. Use -Force to run again." "INFO"
+        exit 0
+    }
+
     # Get all PyCharm installations
     Write-Log "Scanning for PyCharm installations..." "INFO"
     $installations = Get-PyCharmInstallations -EditionFilter $Edition
@@ -383,6 +424,9 @@ try {
     }
 
     Write-Log "=== PyCharm Reinstallation Completed ===" "INFO"
+
+    # Set run marker so script won't run again
+    Set-HasRunMarker
 
     exit 0
 }
