@@ -342,6 +342,42 @@ try {
     Write-Log "=== PyCharm Cleanup Completed ===" "INFO"
     Write-Log "Summary: $totalKept version(s) kept, $totalUninstalled version(s) uninstalled" "INFO"
 
+    # Reinstall PyCharm via Chocolatey to ensure latest version is installed
+    Write-Log "Reinstalling PyCharm via Chocolatey to ensure latest version..." "INFO"
+
+    $chocoPackages = @()
+    if ($Edition -eq 'All' -or $Edition -eq 'Community') {
+        $chocoPackages += 'pycharm-community'
+    }
+    if ($Edition -eq 'All' -or $Edition -eq 'Professional') {
+        $chocoPackages += 'pycharm'
+    }
+
+    foreach ($package in $chocoPackages) {
+        try {
+            Write-Log "Installing $package via Chocolatey..." "INFO"
+
+            if ($PSCmdlet.ShouldProcess($package, "Chocolatey Install")) {
+                $chocoResult = & choco install $package -y --force 2>&1
+                $chocoExitCode = $LASTEXITCODE
+
+                if ($chocoExitCode -eq 0) {
+                    Write-Log "Successfully installed $package via Chocolatey" "SUCCESS"
+                } else {
+                    Write-Log "Chocolatey install of $package returned exit code $chocoExitCode" "WARNING"
+                    Write-Log "Chocolatey output: $chocoResult" "WARNING"
+                }
+            } else {
+                Write-Log "WhatIf: Would install $package via Chocolatey" "INFO"
+            }
+        }
+        catch {
+            Write-Log "Failed to install $package via Chocolatey: $_" "ERROR"
+        }
+    }
+
+    Write-Log "=== PyCharm Reinstallation Completed ===" "INFO"
+
     exit 0
 }
 catch {
