@@ -290,12 +290,17 @@ try {
     Write-Log "Scanning for PyCharm installations..." "INFO"
     $installations = Get-PyCharmInstallations -EditionFilter $Edition
 
-    if ($installations.Count -eq 0) {
-        Write-Log "No PyCharm installations found." "INFO"
-        exit 0
-    }
+    # Track which editions were found (used for Chocolatey reinstall)
+    $detectedEditions = @()
 
-    Write-Log "Found $($installations.Count) PyCharm installation(s)" "INFO"
+    if ($installations.Count -eq 0) {
+        Write-Log "No PyCharm installations found. Will install Professional edition as default." "INFO"
+        $detectedEditions = @('Professional')
+    } else {
+        Write-Log "Found $($installations.Count) PyCharm installation(s)" "INFO"
+        # Get unique editions from installations
+        $detectedEditions = $installations | Select-Object -ExpandProperty Edition -Unique
+    }
 
     # Group by edition
     $groupedInstalls = $installations | Group-Object -Property Edition
@@ -346,11 +351,12 @@ try {
     Write-Log "Reinstalling PyCharm via Chocolatey to ensure latest version..." "INFO"
 
     $chocoPackages = @()
-    if ($Edition -eq 'All' -or $Edition -eq 'Community') {
-        $chocoPackages += 'pycharm-community'
-    }
-    if ($Edition -eq 'All' -or $Edition -eq 'Professional') {
-        $chocoPackages += 'pycharm'
+    foreach ($detectedEdition in $detectedEditions) {
+        if ($detectedEdition -eq 'Community') {
+            $chocoPackages += 'pycharm-community'
+        } elseif ($detectedEdition -eq 'Professional') {
+            $chocoPackages += 'pycharm'
+        }
     }
 
     foreach ($package in $chocoPackages) {
